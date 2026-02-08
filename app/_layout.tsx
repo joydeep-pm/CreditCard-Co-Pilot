@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useSegments, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { fontAssets } from '@/theme/fonts';
 
@@ -37,14 +38,16 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
   return (
-    <AuthProvider>
-      <AuthGate />
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="login" />
-        <Stack.Screen name="otp" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <AuthGate />
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+          <Stack.Screen name="login" />
+          <Stack.Screen name="otp" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

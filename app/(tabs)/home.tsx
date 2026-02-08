@@ -3,17 +3,20 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
   StyleSheet,
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
 import GlassCard from '@/components/GlassCard';
 import Pill from '@/components/Pill';
 import PrimaryButton from '@/components/PrimaryButton';
 import MerchantRow from '@/components/MerchantRow';
-import ParallaxCard from '@/components/ParallaxCard';
+import CinematicHeroCard from '@/components/CinematicHeroCard';
 import YieldRing from '@/components/YieldRing';
 import { recommend, Channel, RecommendationOutput } from '@/engine/recommend';
 import { MERCHANTS } from '@/data/merchants';
@@ -27,6 +30,13 @@ export default function HomeScreen() {
   const [selectedMerchant, setSelectedMerchant] = useState('');
   const [showTerms, setShowTerms] = useState(false);
   const amount = 10000;
+
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      scrollY.value = e.contentOffset.y;
+    },
+  });
 
   const filtered = useMemo(
     () =>
@@ -67,7 +77,9 @@ export default function HomeScreen() {
       <View style={styles.goldGlow} />
 
       <SafeAreaView style={styles.flex} edges={['top']}>
-        <ScrollView
+        <Animated.ScrollView
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
           contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 24 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -141,11 +153,12 @@ export default function HomeScreen() {
               {/* hero card */}
               <GlassCard style={styles.heroCard}>
                 <View style={styles.heroRow}>
-                  <ParallaxCard
-                    issuer={verdict.issuer}
-                    cardName={verdict.cardName}
-                    image={verdict.image}
-                  />
+                  {verdict.image && (
+                    <CinematicHeroCard
+                      image={verdict.image}
+                      scrollY={scrollY}
+                    />
+                  )}
                   <YieldRing percentage={verdict.yieldPct} />
                 </View>
 
@@ -190,7 +203,7 @@ export default function HomeScreen() {
                 </View>
               </GlassCard>
             </View>
-        </ScrollView>
+        </Animated.ScrollView>
       </SafeAreaView>
 
       {/* ── Terms modal ──────────────────────────────── */}
