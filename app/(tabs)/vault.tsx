@@ -1,17 +1,44 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  Image,
+  StyleSheet,
+  Dimensions,
+  PanResponder,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { VAULT_CARDS } from '@/data/merchants';
 import { colors, radii, shadows, TAB_BAR_HEIGHT } from '@/theme/tokens';
 
+const { width: SCREEN_W } = Dimensions.get('window');
+const CARD_W = SCREEN_W - 48;
+const CARD_H = CARD_W / 1.55;
+const STACK_GAP = 24;
+
 export default function VaultScreen() {
   const [active, setActive] = useState(0);
 
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 15,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx < -50) {
+          setActive((p) => Math.min(p + 1, VAULT_CARDS.length - 1));
+        } else if (g.dx > 50) {
+          setActive((p) => Math.max(p - 1, 0));
+        }
+      },
+    }),
+  ).current;
+
   return (
     <View style={styles.bg}>
-      <View style={styles.sageGlow} />
+      {/* Subtle ambient glow */}
+      <View style={styles.ambientGlow} />
 
       <SafeAreaView style={styles.flex} edges={['top']}>
         {/* header */}
@@ -25,11 +52,11 @@ export default function VaultScreen() {
           </Pressable>
         </View>
 
-        {/* stacked cards */}
-        <View style={styles.stackContainer}>
+        {/* card stack */}
+        <View style={styles.stackContainer} {...panResponder.panHandlers}>
           {VAULT_CARDS.map((card, idx) => {
-            const offset = idx - active;
-            const abs = Math.abs(offset);
+            const abs = Math.abs(idx - active);
+            if (abs > 3) return null;
 
             return (
               <Pressable
@@ -37,45 +64,65 @@ export default function VaultScreen() {
                 onPress={() => setActive(idx)}
                 style={[
                   styles.stackedCard,
-                  shadows.md,
                   {
                     zIndex: VAULT_CARDS.length - abs,
                     transform: [
-                      { translateY: offset * 14 },
-                      { scale: 1 - abs * 0.035 },
+                      { translateY: -abs * STACK_GAP },
+                      { scale: 1 - abs * 0.045 },
                     ],
-                    opacity: abs > 4 ? 0 : 1 - abs * 0.12,
+                    opacity: abs === 0 ? 1 : Math.max(0.35, 1 - abs * 0.25),
                   },
                 ]}
               >
-                <LinearGradient
-                  colors={[card.color, `${card.color}CC`]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.cardGradient}
-                >
-                  <View style={styles.cardSheen} />
-                  {/* Gold chip */}
-                  <View style={styles.chip}>
-                    <View style={styles.chipLine} />
-                    <View style={styles.chipLine} />
-                  </View>
-                  <View>
-                    <Text style={styles.cardIssuer}>{card.issuer}</Text>
-                    <Text style={styles.cardName}>{card.name}</Text>
-                  </View>
-                  <Text style={styles.cardNumber}>
-                    {'····  ····  ····  '}{card.lastFour}
-                  </Text>
-                </LinearGradient>
+                <View style={styles.cardInner}>
+                  <Image
+                    source={card.image}
+                    style={styles.cardImage}
+                    resizeMode="cover"
+                  />
+                  {/* Diagonal shine sweep */}
+                  <LinearGradient
+                    colors={[
+                      'transparent',
+                      'rgba(255,255,255,0.03)',
+                      'rgba(255,255,255,0.14)',
+                      'rgba(255,255,255,0.03)',
+                      'transparent',
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                  {/* Top edge highlight for depth */}
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.12)', 'transparent']}
+                    style={styles.topHighlight}
+                  />
+                  {/* Subtle border overlay */}
+                  <View style={styles.cardBorder} />
+                </View>
               </Pressable>
             );
           })}
         </View>
 
-        <Text style={styles.indexLabel}>
-          {active + 1} / {VAULT_CARDS.length}
-        </Text>
+        {/* Card details */}
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardIssuer}>{VAULT_CARDS[active].issuer}</Text>
+          <Text style={styles.cardName}>{VAULT_CARDS[active].name}</Text>
+          <Text style={styles.cardMeta}>
+            {VAULT_CARDS[active].network} •••• {VAULT_CARDS[active].lastFour}
+          </Text>
+        </View>
+
+        {/* Navigation dots */}
+        <View style={styles.dotsRow}>
+          {VAULT_CARDS.map((_, idx) => (
+            <Pressable key={idx} onPress={() => setActive(idx)} hitSlop={8}>
+              <View style={[styles.dot, idx === active && styles.dotActive]} />
+            </Pressable>
+          ))}
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -84,64 +131,121 @@ export default function VaultScreen() {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
-  sageGlow: {
-    position: 'absolute', top: -80, left: -80,
-    width: 260, height: 260, borderRadius: 130,
+  ambientGlow: {
+    position: 'absolute',
+    top: -80,
+    left: -80,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
     backgroundColor: 'rgba(45,212,191,0.06)',
   },
 
   header: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'flex-start', paddingHorizontal: 20, paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   subtitle: {
-    fontSize: 11, fontWeight: '700', color: colors.muted2,
-    letterSpacing: 1.5, marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.muted2,
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
-  title: { fontSize: 26, fontWeight: '800', color: colors.text },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: colors.text,
+  },
   addBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
   },
 
   stackContainer: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingBottom: TAB_BAR_HEIGHT,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 10,
   },
   stackedCard: {
     position: 'absolute',
-    width: 300,
-    height: 190,
+    width: CARD_W,
+    height: CARD_H,
     borderRadius: radii.xl,
     overflow: 'hidden',
+    ...shadows.lg,
   },
-  cardGradient: {
-    flex: 1, padding: 24, justifyContent: 'space-between',
+  cardInner: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
   },
-  cardSheen: {
-    position: 'absolute', top: -30, right: -30,
-    width: 120, height: 120, borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+  cardImage: {
+    width: '100%',
+    height: '100%',
   },
-  chip: {
-    width: 36, height: 26, borderRadius: 5,
-    backgroundColor: '#D4AF37',
-    justifyContent: 'center', paddingHorizontal: 4, gap: 3,
+  topHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
   },
-  chipLine: {
-    height: 1, backgroundColor: 'rgba(0,0,0,0.15)',
+  cardBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+
+  cardInfo: {
+    alignItems: 'center',
+    paddingBottom: 14,
   },
   cardIssuer: {
-    fontSize: 12, fontWeight: '600',
-    color: 'rgba(255,255,255,0.55)', letterSpacing: 1.5,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.muted2,
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
-  cardName: { fontSize: 22, fontWeight: '800', color: '#FFF', marginTop: 2 },
-  cardNumber: {
-    fontSize: 14, color: 'rgba(255,255,255,0.65)', letterSpacing: 2,
+  cardName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 4,
   },
-  indexLabel: {
-    textAlign: 'center', fontSize: 14, fontWeight: '600',
-    color: colors.muted, paddingBottom: TAB_BAR_HEIGHT + 16,
+  cardMeta: {
+    fontSize: 13,
+    color: colors.muted,
+    letterSpacing: 1,
+  },
+
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingBottom: TAB_BAR_HEIGHT + 20,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  dotActive: {
+    backgroundColor: colors.sage,
+    width: 22,
+    borderRadius: 3,
   },
 });

@@ -1,3 +1,5 @@
+import { ImageSourcePropType } from 'react-native';
+
 export interface Merchant {
   id: string;
   name: string;
@@ -28,15 +30,14 @@ export interface VaultCard {
   color: string;
   lastFour: string;
   network: string;
+  image: ImageSourcePropType;
 }
 
 export const VAULT_CARDS: VaultCard[] = [
-  { id: 1, issuer: 'HDFC BANK', name: 'Infinia', color: '#1E293B', lastFour: '4242', network: 'Visa' },
-  { id: 2, issuer: 'ICICI BANK', name: 'Emeralde', color: '#0C4A6E', lastFour: '7832', network: 'Visa' },
-  { id: 3, issuer: 'Axis BANK', name: 'Magnus', color: '#312E81', lastFour: '5518', network: 'MC' },
-  { id: 4, issuer: 'SBI CARD', name: 'Elite', color: '#1E3A5F', lastFour: '9043', network: 'Visa' },
-  { id: 5, issuer: 'AMEX', name: 'Platinum', color: '#374151', lastFour: '3677', network: 'Amex' },
-  { id: 6, issuer: 'YES BANK', name: 'Marquee', color: '#1E293B', lastFour: '2345', network: 'Visa' },
-  { id: 7, issuer: 'Kotak', name: '811 Dream', color: '#1F2937', lastFour: '6205', network: 'Visa' },
-  { id: 8, issuer: 'RBL', name: 'ShopRite', color: '#292524', lastFour: '8471', network: 'MC' },
+  { id: 1, issuer: 'ICICI BANK', name: 'Emeralde Private', color: '#0C4A6E', lastFour: '7832', network: 'MC', image: require('../../assets/cards/icici_emeralde.png') },
+  { id: 2, issuer: 'ICICI BANK', name: 'Sapphire', color: '#1E3A5F', lastFour: '3747', network: 'Amex', image: require('../../assets/cards/icici_sapphire.png') },
+  { id: 3, issuer: 'Axis BANK', name: 'Flipkart', color: '#1E293B', lastFour: '4400', network: 'Visa', image: require('../../assets/cards/flipkart_axis.png') },
+  { id: 4, issuer: 'Axis BANK', name: 'Atlas', color: '#1E293B', lastFour: '5518', network: 'Visa', image: require('../../assets/cards/axis_atlas.png') },
+  { id: 5, issuer: 'HSBC', name: 'World', color: '#4C1D95', lastFour: '9043', network: 'MC', image: require('../../assets/cards/hsbc_world.png') },
+  { id: 6, issuer: 'SBI CARD', name: 'Cashback', color: '#5B21B6', lastFour: '3677', network: 'Visa', image: require('../../assets/cards/sbi_cashback.png') },
 ];

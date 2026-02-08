@@ -40,8 +40,8 @@ export default function HomeScreen() {
 
   const DEFAULT_VERDICT: RecommendationOutput = {
     bestForLabel: 'Online Shopping',
-    issuer: 'HDFC',
-    cardName: 'Infinia',
+    issuer: 'ICICI',
+    cardName: 'Emeralde Private',
     yieldPct: 0,
     rewardType: 'Cashback',
     route: 'Direct Purchase',
@@ -50,6 +50,7 @@ export default function HomeScreen() {
     logicChips: ['5X Rewards', 'No Cap', 'Instant Credit'],
     terms:
       'Reward points credited within 30 days of statement generation. Minimum transaction value ₹150. Subject to merchant category code validation.',
+    image: require('../../assets/cards/icici_emeralde.png'),
   };
 
   const verdict = useMemo(
@@ -143,6 +144,7 @@ export default function HomeScreen() {
                   <ParallaxCard
                     issuer={verdict.issuer}
                     cardName={verdict.cardName}
+                    image={verdict.image}
                   />
                   <YieldRing percentage={verdict.yieldPct} />
                 </View>

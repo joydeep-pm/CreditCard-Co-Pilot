@@ -1,3 +1,5 @@
+import { ImageSourcePropType } from 'react-native';
+
 export type Channel = 'online' | 'offline' | 'upi' | 'portal';
 
 export type RecommendationInput = {
@@ -17,6 +19,7 @@ export type RecommendationOutput = {
   ringUsed: number;
   logicChips: [string, string, string];
   terms: string;
+  image?: ImageSourcePropType;
 };
 
 function hash(str: string): number {
@@ -29,8 +32,8 @@ function hash(str: string): number {
 
 const CARDS: Array<Omit<RecommendationOutput, 'bestForLabel' | 'estSavings'>> = [
   {
-    issuer: 'HDFC',
-    cardName: 'Infinia',
+    issuer: 'ICICI',
+    cardName: 'Emeralde Private',
     yieldPct: 3.3,
     rewardType: 'Reward Points',
     route: 'SmartBuy → Amazon Pay',
@@ -38,10 +41,11 @@ const CARDS: Array<Omit<RecommendationOutput, 'bestForLabel' | 'estSavings'>> = 
     logicChips: ['10x on SmartBuy', 'Amazon portal active', 'Max cap ₹7k/mo'],
     terms:
       'Reward points credited within 30 days of statement generation. Minimum transaction value ₹150. Subject to merchant category code validation.',
+    image: require('../../assets/cards/icici_emeralde.png'),
   },
   {
     issuer: 'ICICI',
-    cardName: 'Emeralde',
+    cardName: 'Sapphire',
     yieldPct: 2.5,
     rewardType: 'Cashback',
     route: 'Direct Swipe → ICICI Net',
@@ -49,10 +53,11 @@ const CARDS: Array<Omit<RecommendationOutput, 'bestForLabel' | 'estSavings'>> = 
     logicChips: ['2x on dining', 'Weekend boost active', 'No cap this cycle'],
     terms:
       'Cashback credited to statement within 2 billing cycles. Excludes wallet loads and fuel transactions.',
+    image: require('../../assets/cards/icici_sapphire.png'),
   },
   {
     issuer: 'Axis',
-    cardName: 'Magnus',
+    cardName: 'Atlas',
     yieldPct: 4.1,
     rewardType: 'Edge Miles',
     route: 'Edge Rewards → Transfer',
@@ -60,28 +65,31 @@ const CARDS: Array<Omit<RecommendationOutput, 'bestForLabel' | 'estSavings'>> = 
     logicChips: ['5x on travel', 'Milestone unlocked', 'Transfer bonus 30%'],
     terms:
       'Miles transferred within 48 hours. Partner availability subject to change. Minimum 2000 miles per transfer.',
+    image: require('../../assets/cards/axis_atlas.png'),
   },
   {
     issuer: 'SBI',
-    cardName: 'Elite',
+    cardName: 'Cashback',
     yieldPct: 1.8,
-    rewardType: 'Reward Points',
+    rewardType: 'Cashback',
     route: 'SBI Rewardz Portal',
     ringUsed: 0.45,
-    logicChips: ['10x on movies', 'Grocery 5x active', 'Monthly cap ₹5k'],
+    logicChips: ['5% on online', 'Grocery 5x active', 'Monthly cap ₹5k'],
     terms:
-      'Points valid for 24 months from earn date. Redemption minimum 500 points. Some merchant exclusions apply.',
+      'Cashback credited to statement within 2 billing cycles. Minimum 500 points. Some merchant exclusions apply.',
+    image: require('../../assets/cards/sbi_cashback.png'),
   },
   {
-    issuer: 'Amex',
-    cardName: 'Platinum',
+    issuer: 'HSBC',
+    cardName: 'World',
     yieldPct: 5.0,
-    rewardType: 'Membership Rewards',
-    route: 'Amex Offers → Direct',
+    rewardType: 'Reward Points',
+    route: 'HSBC Rewards → Direct',
     ringUsed: 0.78,
-    logicChips: ['5x on intl spend', 'Amex offer stacked', 'Annual fee offset'],
+    logicChips: ['5x on intl spend', 'Milestone bonus active', 'Annual fee offset'],
     terms:
-      'Membership Rewards points have no expiry. Transfer ratios vary by airline partner. Statement credits processed in 5-7 days.',
+      'Reward points have no expiry. Transfer ratios vary by partner. Statement credits processed in 5-7 days.',
+    image: require('../../assets/cards/hsbc_world.png'),
   },
 ];
 
