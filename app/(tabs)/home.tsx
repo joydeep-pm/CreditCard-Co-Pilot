@@ -5,6 +5,7 @@ import {
   TextInput,
   StyleSheet,
   Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -29,6 +30,7 @@ export default function HomeScreen() {
   const [query, setQuery] = useState('');
   const [selectedMerchant, setSelectedMerchant] = useState('');
   const [showTerms, setShowTerms] = useState(false);
+  const [showRouteSheet, setShowRouteSheet] = useState(false);
   const amount = 10000;
 
   const scrollY = useSharedValue(0);
@@ -70,6 +72,15 @@ export default function HomeScreen() {
         : DEFAULT_VERDICT,
     [channel, selectedMerchant, amount],
   );
+  const routeSteps = useMemo(
+    () =>
+      verdict.route
+        .split('→')
+        .map((step) => step.trim())
+        .filter(Boolean),
+    [verdict.route],
+  );
+  const routeMerchant = selectedMerchant || verdict.bestForLabel;
 
   return (
     <View style={styles.bg}>
@@ -153,12 +164,12 @@ export default function HomeScreen() {
               {/* hero card */}
               <GlassCard style={styles.heroCard}>
                 <View style={styles.heroRow}>
-                  {verdict.image && (
-                    <CinematicHeroCard
-                      image={verdict.image}
-                      scrollY={scrollY}
-                    />
-                  )}
+                  <CinematicHeroCard
+                    image={verdict.image}
+                    scrollY={scrollY}
+                    issuer={verdict.issuer}
+                    cardName={verdict.cardName}
+                  />
                   <YieldRing percentage={verdict.yieldPct} />
                 </View>
 
@@ -173,7 +184,7 @@ export default function HomeScreen() {
                 <View style={styles.ctaRow}>
                   <PrimaryButton
                     title="Direct Purchase"
-                    onPress={() => {}}
+                    onPress={() => setShowRouteSheet(true)}
                     style={styles.ctaBtn}
                   />
                   <PrimaryButton
@@ -207,13 +218,57 @@ export default function HomeScreen() {
       </SafeAreaView>
 
       {/* ── Terms modal ──────────────────────────────── */}
-      <Modal visible={showTerms} transparent animationType="slide">
+      <Modal
+        visible={showTerms}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTerms(false)}
+      >
         <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowTerms(false)} />
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Terms & Conditions</Text>
             <Text style={styles.modalBody}>{verdict.terms}</Text>
             <PrimaryButton title="Got it" onPress={() => setShowTerms(false)} />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showRouteSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRouteSheet(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowRouteSheet(false)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Route Steps (Prototype)</Text>
+            <Text style={styles.modalBody}>
+              This flow is a prototype preview. It shows how the recommendation would be
+              executed.
+            </Text>
+
+            <View style={styles.routeMeta}>
+              <Text style={styles.routeMetaItem}>Merchant: {routeMerchant}</Text>
+              <Text style={styles.routeMetaItem}>Channel: {channel.toUpperCase()}</Text>
+              <Text style={styles.routeMetaItem}>Reward: {verdict.rewardType}</Text>
+            </View>
+
+            <View style={styles.routeStepsList}>
+              {routeSteps.map((step, index) => (
+                <View key={`${step}-${index}`} style={styles.routeStepRow}>
+                  <View style={styles.routeStepIndex}>
+                    <Text style={styles.routeStepIndexText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.routeStepText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+
+            <PrimaryButton title="Close" onPress={() => setShowRouteSheet(false)} />
           </View>
         </View>
       </Modal>
@@ -313,6 +368,9 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   modalSheet: {
     backgroundColor: colors.surface, borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl, padding: 24, paddingBottom: 40,
@@ -326,5 +384,41 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     fontSize: 14, color: colors.muted, lineHeight: 22, marginBottom: 24,
+  },
+  routeMeta: {
+    gap: 4,
+    marginBottom: 16,
+  },
+  routeMetaItem: {
+    fontSize: 13,
+    color: colors.muted,
+  },
+  routeStepsList: {
+    gap: 10,
+    marginBottom: 24,
+  },
+  routeStepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  routeStepIndex: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45,212,191,0.14)',
+  },
+  routeStepIndexText: {
+    color: colors.sage2,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  routeStepText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

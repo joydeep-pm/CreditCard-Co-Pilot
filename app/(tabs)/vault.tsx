@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withRepeat,
   withTiming,
   interpolate,
   Extrapolation,
@@ -51,13 +50,29 @@ function AnimatedVaultCard({
   const animStyle = useAnimatedStyle(() => {
     const offset = index - activeIndexSV.value;
 
-    // Hide cards that are behind or too far away
-    if (offset < 0 || offset > 3) {
+    if (offset < -1 || offset > 3) {
       return { opacity: 0 };
     }
 
+    if (offset === -1) {
+      const rightDismissProgress = interpolate(
+        Math.max(dismissX.value, 0),
+        [0, SCREEN_W * 0.5],
+        [0, 1],
+        Extrapolation.CLAMP,
+      );
+      const scale = 0.95 + 0.05 * rightDismissProgress;
+      const translateY = STACK_GAP * (1 - rightDismissProgress);
+      const opacity = 0.3 + 0.7 * rightDismissProgress;
+
+      return {
+        zIndex: 9,
+        opacity,
+        transform: [{ translateY }, { scale }],
+      };
+    }
+
     if (offset === 0) {
-      // Active card — follows finger with rotation
       const rotate = interpolate(
         dismissX.value,
         [-SCREEN_W, 0, SCREEN_W],
@@ -74,9 +89,8 @@ function AnimatedVaultCard({
       };
     }
 
-    // Behind cards — react to dismiss progress (spring up as top card leaves)
-    const dismissProgress = interpolate(
-      Math.abs(dismissX.value),
+    const leftDismissProgress = interpolate(
+      Math.max(-dismissX.value, 0),
       [0, SCREEN_W * 0.5],
       [0, 1],
       Extrapolation.CLAMP,
@@ -84,11 +98,11 @@ function AnimatedVaultCard({
 
     const baseScale = 1 - offset * 0.045;
     const targetScale = 1 - (offset - 1) * 0.045;
-    const scale = baseScale + (targetScale - baseScale) * dismissProgress;
+    const scale = baseScale + (targetScale - baseScale) * leftDismissProgress;
 
     const baseY = -offset * STACK_GAP;
     const targetY = -(offset - 1) * STACK_GAP;
-    const translateY = baseY + (targetY - baseY) * dismissProgress;
+    const translateY = baseY + (targetY - baseY) * leftDismissProgress;
 
     const baseOpacity = interpolate(
       offset,
@@ -102,7 +116,7 @@ function AnimatedVaultCard({
       [1, 0.75, 0.5, 0.25],
       Extrapolation.CLAMP,
     );
-    const opacity = baseOpacity + (targetOpacity - baseOpacity) * dismissProgress;
+    const opacity = baseOpacity + (targetOpacity - baseOpacity) * leftDismissProgress;
 
     return {
       zIndex: 10 - offset,
@@ -115,26 +129,10 @@ function AnimatedVaultCard({
     <Animated.View style={[styles.stackedCard, animStyle]}>
       <View style={styles.cardInner}>
         <Image source={card.image} style={styles.cardImage} resizeMode="cover" />
-        {/* Diagonal shine sweep */}
-        <LinearGradient
-          colors={[
-            'transparent',
-            'rgba(255,255,255,0.03)',
-            'rgba(255,255,255,0.14)',
-            'rgba(255,255,255,0.03)',
-            'transparent',
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-        {/* Top edge highlight for depth */}
         <LinearGradient
           colors={['rgba(255,255,255,0.12)', 'transparent']}
           style={styles.topHighlight}
         />
-        {/* Subtle border overlay */}
-        <View style={styles.cardBorder} />
       </View>
     </Animated.View>
   );
@@ -145,28 +143,30 @@ export default function VaultScreen() {
   const [active, setActive] = useState(0);
   const activeIndexSV = useSharedValue(0);
   const dismissX = useSharedValue(0);
-  const glowOpacity = useSharedValue(0.5);
-
-  // Pulsing glow behind active card
-  useEffect(() => {
-    glowOpacity.value = withRepeat(
-      withTiming(0.8, { duration: 1500 }),
-      -1,
-      true,
-    );
-  }, [glowOpacity]);
+  const glowOpacity = useSharedValue(0);
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: glowOpacity.value,
+    transform: [{ scale: 1 + glowOpacity.value * 0.25 }],
   }));
+
+  const visibleCards = useMemo(
+    () =>
+      VAULT_CARDS.map((card, index) => ({ card, index })).filter(
+        ({ index }) => index >= Math.max(0, active - 1) && index <= Math.min(CARD_COUNT - 1, active + 2),
+      ),
+    [active],
+  );
 
   const navigateTo = useCallback(
     (idx: number) => {
       dismissX.value = 0;
       activeIndexSV.value = idx;
       setActive(idx);
+      glowOpacity.value = 0.22;
+      glowOpacity.value = withTiming(0, { duration: 420 });
     },
-    [activeIndexSV, dismissX],
+    [activeIndexSV, dismissX, glowOpacity],
   );
 
   const panGesture = Gesture.Pan()
@@ -193,6 +193,8 @@ export default function VaultScreen() {
               activeIndexSV.value = newIdx;
               dismissX.value = 0;
               runOnJS(setActive)(newIdx);
+              glowOpacity.value = 0.22;
+              glowOpacity.value = withTiming(0, { duration: 420 });
             }
           },
         );
@@ -213,6 +215,8 @@ export default function VaultScreen() {
               activeIndexSV.value = newIdx;
               dismissX.value = 0;
               runOnJS(setActive)(newIdx);
+              glowOpacity.value = 0.22;
+              glowOpacity.value = withTiming(0, { duration: 420 });
             }
           },
         );
@@ -221,6 +225,8 @@ export default function VaultScreen() {
 
       // Rubber-band back
       dismissX.value = withSpring(0, SETTLE_SPRING);
+      glowOpacity.value = 0.14;
+      glowOpacity.value = withTiming(0, { duration: 320 });
     });
 
   return (
@@ -242,14 +248,14 @@ export default function VaultScreen() {
         {/* card stack */}
         <GestureDetector gesture={panGesture}>
           <Animated.View style={styles.stackContainer}>
-            {/* Pulsing glow behind active card */}
+            {/* One-shot emphasis after settle/index change */}
             <Animated.View style={[styles.activeGlow, glowStyle]} />
 
-            {VAULT_CARDS.map((card, idx) => (
+            {visibleCards.map(({ card, index }) => (
               <AnimatedVaultCard
                 key={card.id}
                 card={card}
-                index={idx}
+                index={index}
                 activeIndexSV={activeIndexSV}
                 dismissX={dismissX}
               />
@@ -337,7 +343,7 @@ const styles = StyleSheet.create({
     shadowColor: colors.sage,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 25,
+    shadowRadius: 20,
     elevation: 8,
   },
   stackedCard: {
@@ -363,12 +369,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1.5,
-  },
-  cardBorder: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
   },
 
   cardInfo: {

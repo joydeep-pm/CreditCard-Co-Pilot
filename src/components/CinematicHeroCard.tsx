@@ -1,80 +1,192 @@
-import React from 'react';
-import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Image,
+  ImageSourcePropType,
+  StyleSheet,
+  View,
+  Text,
+} from 'react-native';
 import Animated, {
   SharedValue,
+  useSharedValue,
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  withTiming,
+  withRepeat,
+  Easing,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { radii, shadows } from '@/theme/tokens';
+import { colors, radii, shadows } from '@/theme/tokens';
 
 interface Props {
-  image: ImageSourcePropType;
+  image?: ImageSourcePropType;
   scrollY: SharedValue<number>;
+  issuer?: string;
+  cardName?: string;
 }
 
-export default function CinematicHeroCard({ image, scrollY }: Props) {
-  /* 3-D tilt + subtle scale as user scrolls down */
+export default function CinematicHeroCard({ image, scrollY, issuer, cardName }: Props) {
+  const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
+  const entryProgress = useSharedValue(0);
+  const ambientProgress = useSharedValue(0);
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (mounted) {
+          setReduceMotionEnabled(enabled);
+        }
+      })
+      .catch(() => {});
+
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      setReduceMotionEnabled,
+    );
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    entryProgress.value = reduceMotionEnabled ? 1 : withTiming(1, { duration: 520 });
+  }, [entryProgress, reduceMotionEnabled]);
+
+  useEffect(() => {
+    if (reduceMotionEnabled) {
+      cancelAnimation(ambientProgress);
+      ambientProgress.value = 0;
+      return;
+    }
+    ambientProgress.value = withRepeat(
+      withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true,
+    );
+  }, [ambientProgress, reduceMotionEnabled]);
+
   const cardStyle = useAnimatedStyle(() => {
+    if (reduceMotionEnabled) {
+      return { transform: [{ perspective: 800 }] };
+    }
+
+    const entryLift = interpolate(
+      entryProgress.value,
+      [0, 1],
+      [10, 0],
+      Extrapolation.CLAMP,
+    );
+    const entryTilt = interpolate(
+      entryProgress.value,
+      [0, 1],
+      [7, 0],
+      Extrapolation.CLAMP,
+    );
     const rotateX = interpolate(
       scrollY.value,
-      [0, 200],
-      [0, 15],
+      [0, 220],
+      [0, 6],
       Extrapolation.CLAMP,
     );
     const scale = interpolate(
       scrollY.value,
-      [0, 200],
-      [1, 1.05],
+      [0, 220],
+      [1, 1.02],
+      Extrapolation.CLAMP,
+    );
+    const ambientScale = interpolate(
+      ambientProgress.value,
+      [0, 1],
+      [1, 1.012],
+      Extrapolation.CLAMP,
+    );
+    const ambientRotate = interpolate(
+      ambientProgress.value,
+      [0, 1],
+      [-0.6, 0.6],
       Extrapolation.CLAMP,
     );
     return {
       transform: [
         { perspective: 800 },
-        { rotateX: `${rotateX}deg` },
-        { scale },
+        { translateY: entryLift },
+        { rotateX: `${rotateX + entryTilt}deg` },
+        { rotateZ: `${ambientRotate}deg` },
+        { scale: scale * ambientScale },
       ],
     };
   });
 
-  /* Diagonal glare that sweeps across the card with scroll */
   const glareStyle = useAnimatedStyle(() => {
+    if (reduceMotionEnabled) {
+      return {
+        transform: [{ translateX: -80 }, { translateY: -40 }],
+        opacity: 0,
+      };
+    }
+
     const translateX = interpolate(
       scrollY.value,
-      [0, 200],
-      [-80, 120],
+      [0, 220],
+      [-50, 90],
       Extrapolation.CLAMP,
     );
     const translateY = interpolate(
       scrollY.value,
-      [0, 200],
-      [-40, 80],
+      [0, 220],
+      [-30, 40],
       Extrapolation.CLAMP,
     );
-    const opacity = interpolate(
+    const scrollOpacity = interpolate(
       scrollY.value,
-      [0, 60, 140, 200],
-      [0, 0.3, 0.3, 0],
+      [0, 80, 200],
+      [0, 0.18, 0],
+      Extrapolation.CLAMP,
+    );
+    const entryOpacity = interpolate(
+      entryProgress.value,
+      [0, 1],
+      [0.22, 0],
+      Extrapolation.CLAMP,
+    );
+    const ambientOpacity = interpolate(
+      ambientProgress.value,
+      [0, 1],
+      [0.03, 0.16],
       Extrapolation.CLAMP,
     );
     return {
       transform: [{ translateX }, { translateY }],
-      opacity,
+      opacity: scrollOpacity + entryOpacity + ambientOpacity,
     };
   });
 
   return (
     <Animated.View style={[styles.container, shadows.lg, cardStyle]}>
-      <Image source={image} style={styles.image} resizeMode="cover" />
-      {/* Diagonal glare sweep */}
+      {image ? (
+        <Image source={image} style={styles.image} resizeMode="cover" />
+      ) : (
+        <LinearGradient
+          colors={[colors.dark, '#1E293B']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fallback}
+        >
+          <Text style={styles.fallbackIssuer}>{issuer ?? 'Card'}</Text>
+          <Text style={styles.fallbackName}>{cardName ?? 'Recommended'}</Text>
+        </LinearGradient>
+      )}
       <Animated.View style={[styles.glare, glareStyle]} />
-      {/* Top edge gleam */}
       <LinearGradient
         colors={['rgba(255,255,255,0.18)', 'transparent']}
         style={styles.topGleam}
       />
-      {/* Border overlay */}
       <View style={styles.border} />
     </Animated.View>
   );
@@ -91,6 +203,22 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  fallback: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  fallbackIssuer: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  fallbackName: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   glare: {
     position: 'absolute',
